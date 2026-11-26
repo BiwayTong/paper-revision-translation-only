@@ -5,11 +5,14 @@ import os
 from pathlib import Path
 import tempfile
 from zipfile import ZipFile, ZIP_DEFLATED
-from apple_rounds import digest, read_texts
+from google_rounds import read_spans, read_texts, verify_record
 
 
 def export(job, destination):
-    original = read_texts(job / "original.json")
+    spans = read_spans(job)
+    original = {span["id"]: span["text"] for span in spans}
+    if read_texts(job / "original.json") != original:
+        raise ValueError("Highlighted source differs from the original selection")
     def draft(name):
         values = read_texts(job / (name + ".json"))
         if values.keys() != original.keys():
@@ -22,22 +25,29 @@ def export(job, destination):
         with ZipFile(out, "w", ZIP_DEFLATED) as archive:
             for name in ("scope.json", "original.json", "baseline.json", "review.md"):
                 archive.write(job/name, name)
+            excerpts = ["# 编号摘录"]
+            for span in spans:
+                pages = ", ".join(map(str, span.get("pages", [])))
+                location = f"PDF 页 {pages}" if pages else "未提供 PDF 页码"
+                excerpts.extend([f"## {span['id']} · {location}", span["text"]])
+            archive.writestr("highlights.md", "\n\n".join(excerpts) + "\n")
             for n in (1, 2, 3):
                 sections = []
                 for direction, raw_title, edit_title in (
-                        ("zh", "苹果翻译中文原文", "中文调整稿"),
-                        ("en", "苹果翻译英文回译原文", "本轮英文稿")):
+                        ("zh", "Google 翻译中文原文", "中文调整稿"),
+                        ("en", "Google 翻译英文回译原文", "本轮英文稿")):
                     tag = f"r{n}-{direction}"
                     raw = draft(tag+"-raw")
                     for ident in original:
                         rec_file = job/".records"/tag/(ident+".json")
                         rec = json.loads(rec_file.read_text(encoding="utf-8"))
-                        if (rec["input_sha256"] != digest(current[ident]) or rec["output"] != raw[ident]
-                                or rec["output_sha256"] != digest(raw[ident])
-                                or rec["provider"] not in ("apple-shortcut", "apple-manual-user-attested")):
+                        if not verify_record(rec, current[ident], direction) or rec["output"] != raw[ident]:
                             raise ValueError(f"Translation record differs: {tag}/{ident}")
                         archive.write(rec_file, f"records/{tag}/{ident}.json")
                     current = draft(tag+"-edit")
+                    for suffix in ("raw", "edit"):
+                        filename = f"{tag}-{suffix}.json"
+                        archive.write(job/filename, filename)
                     sections.extend([(raw_title, raw), (edit_title, current)])
                 lines = [f"# 第 {n} 轮"]
                 for ident in original:
