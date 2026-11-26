@@ -21,22 +21,32 @@ python scripts/manuscript.py prepare paper.txt job --blocks all
 
 内容核查后，将英文基准稿写为 `job/baseline.json`。从此各稿件均使用相同的编号到文本映射，例如 `{"P001": "The survey covered two sites."}`。把已核实的纠正及待核实项单独记录。
 
-在 Mac 的“快捷指令”中检查两条指令确实使用苹果“翻译文本”动作，返回文本，各自指定英文→中文或中文→英文。下例用名称“论文英译中”和“论文中译英”，可替换为用户实际配置的名称。
+### 使用 Google Cloud 自动翻译
+
+使用已启用 Cloud Translation API 的 Google Cloud 项目。可以在运行进程中设置环境变量 `GOOGLE_TRANSLATE_API_KEY`，或为 Python 安装 `google-auth[requests]` 并配置应用默认凭据（ADC）。使用个人 ADC 时，需要具备相应权限的配额项目，可通过 `GOOGLE_CLOUD_QUOTA_PROJECT` 指定。密钥留在本机的环境变量或密钥管理器中。实际提交给 Google 的是选定段落，费用和配额以所用项目为准。[身份验证](https://cloud.google.com/translate/docs/authentication) · [官方接口](https://cloud.google.com/translate/docs/reference/rest/v2/translate) · [计费](https://cloud.google.com/translate/pricing)
 
 ```sh
-python scripts/apple_rounds.py job 1 zh '论文英译中'
-# 阅读 r1-zh-raw.json，把逐段调整的中文写入 job/r1-zh-edit.json
-python scripts/apple_rounds.py job 1 en '论文中译英'
-# 阅读 r1-en-raw.json，把核对后的英文写入 job/r1-en-edit.json
+python scripts/google_rounds.py job 1 zh
+# 阅读 r1-zh-raw.json，将中文建议稿或作者修改稿写入 job/r1-zh-edit.json
+python scripts/google_rounds.py job 1 en
+# 阅读 r1-en-raw.json，将核对后的英文写入 job/r1-en-edit.json
 ```
 
-第二、三轮使用相同命令，将轮次分别改为 `2` 和 `3`。程序读取前一轮的英文修改稿或本轮的中文调整稿，并在 `.records/` 留存来源、输入指纹与原始译文。已有记录会核对指纹；中断后重跑相同步骤即可续跑。不得以空译、原文复写或模型自行翻译充当工具译文。
+第二轮和第三轮分别把轮次改为 `2` 和 `3`。英译中的输入是第一轮的基准稿或上一轮英文调整稿，中译英的输入始终是本轮中文调整稿。JSON 调整稿沿用基准稿的全部编号。对于 Google 原样返回的空格、标点或字符实体，保留原始输出，在调整稿中按语境处理。
 
-若需人工操作，将待译输入按编号交给用户。仅在用户实际使用苹果翻译并提供未经编辑的结果后，按下例导入。短专名经苹果翻译后保持原样，也可按此登记。部分导入会提示尚缺编号，已有结果会保存。
+每个成功段落独立记录翻译渠道、语言方向、输入与译文指纹。临时网络错误或限流缓解后重跑当前步骤，程序会从缺失的段落继续。出现 `SERVICE_DISABLED` 时，检查所用项目是否已启用 Cloud Translation API，或继续使用网页方式。遇到长度上限应按句界分段，记录各段位置及原始译文，再按原顺序回填。
+
+### 使用 Google 翻译网页
+
+没有 Cloud 凭据也可完成三轮。每次导出当前步骤的待译表，在 Google 翻译网页设置表内指定的英中方向，逐段提交 `source`，把显示的完整译文原样填入对应的 `translation`。保留编号、轮次、语言和源文。编辑者有网页访问权限时直接操作，否则请用户返回填好的表。每次都要实际取得本轮译文。[打开 Google 翻译](https://translate.google.com/)
 
 ```sh
-python scripts/apple_rounds.py job 1 zh --import-apple user-apple-output.json
+python scripts/google_rounds.py job 1 zh --export-web r1-zh-web.json
+# 填入网页译文后导入
+python scripts/google_rounds.py job 1 zh --import-web r1-zh-web.json
 ```
+
+中译英将 `zh` 换为 `en`，各轮各方向使用独立文件。部分导入会保存已填段落并列出缺少的编号。导入时程序核对源文、轮次和方向。归档中的 `provider` 用 `google-translate-web` 标记网页译文，用 `google-cloud-translation-v2` 标记 API 返回值。若两种渠道均不可用，交付当前待译表及进度。
 
 ### 第三轮英文编辑
 

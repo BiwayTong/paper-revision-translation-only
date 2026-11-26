@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import tempfile
 from zipfile import ZipFile, ZIP_DEFLATED
-from apple_rounds import digest, read_texts
+from google_rounds import read_texts, verify_record
 
 
 def export(job, destination):
@@ -25,19 +25,20 @@ def export(job, destination):
             for n in (1, 2, 3):
                 sections = []
                 for direction, raw_title, edit_title in (
-                        ("zh", "苹果翻译中文原文", "中文调整稿"),
-                        ("en", "苹果翻译英文回译原文", "本轮英文稿")):
+                        ("zh", "Google 翻译中文原文", "中文调整稿"),
+                        ("en", "Google 翻译英文回译原文", "本轮英文稿")):
                     tag = f"r{n}-{direction}"
                     raw = draft(tag+"-raw")
                     for ident in original:
                         rec_file = job/".records"/tag/(ident+".json")
                         rec = json.loads(rec_file.read_text(encoding="utf-8"))
-                        if (rec["input_sha256"] != digest(current[ident]) or rec["output"] != raw[ident]
-                                or rec["output_sha256"] != digest(raw[ident])
-                                or rec["provider"] not in ("apple-shortcut", "apple-manual-user-attested")):
+                        if not verify_record(rec, current[ident], direction) or rec["output"] != raw[ident]:
                             raise ValueError(f"Translation record differs: {tag}/{ident}")
                         archive.write(rec_file, f"records/{tag}/{ident}.json")
                     current = draft(tag+"-edit")
+                    for suffix in ("raw", "edit"):
+                        filename = f"{tag}-{suffix}.json"
+                        archive.write(job/filename, filename)
                     sections.extend([(raw_title, raw), (edit_title, current)])
                 lines = [f"# 第 {n} 轮"]
                 for ident in original:
