@@ -1,8 +1,10 @@
-# 英文论文三轮翻译修订
+# 论文轻校对
 
 这两套 Codex 工具都支持用苹果翻译或 Google 翻译做三轮英中往返，保留每轮原始译文，尽量沿用作者原句。
 
-**本仓库是基础版（不带 Humanizer）**，第三轮英文回译保存后，直接对照原意、做必要校对。想在这一步额外复核一次措辞，可以选[带 Humanizer 的版本](https://github.com/BiwayTong/apple-translate-paper-revision)。
+**论文轻校对**完成三轮翻译后，对照原意、修正必要问题。想在第三轮英文回译后再用 Humanizer 复核一次措辞，可选[论文轻校对·表达复核](https://github.com/BiwayTong/apple-translate-paper-revision)。
+
+若想只装一个技能，按次选择翻译工具、修改范围和表达复核，请看[论文轻校对·通用版](https://github.com/BiwayTong/paper-proofread)。在其他 AI 对话里也可以直接[复制通用提示词](https://github.com/BiwayTong/paper-proofread/blob/main/PROMPT.md)。
 
 ## 选一个版本
 
