@@ -1,4 +1,4 @@
 interface:
-  display_name: "普通论文 · 苹果翻译基础版"
-  short_description: "用苹果翻译往返三轮，核对选定的英文正文并尽量保留作者原句"
-  default_prompt: "请用 $apple-translate-paper-revision-translation-only 处理选定的英文正文，跑完三轮苹果翻译。第三轮回译后直接核对原意，只做必要修改，另存定稿和过程稿。"
+  display_name: "Turnitin 蓝色高亮 · 苹果翻译基础版"
+  short_description: "用苹果翻译往返三轮，核对报告标蓝的英文并尽量保留作者原句"
+  default_prompt: "请用 $turnitin-highlight-revision-translation-only 处理报告标蓝的英文，跑完三轮苹果翻译。第三轮回译后直接核对原意，只做必要修改，另存定稿和过程稿。"

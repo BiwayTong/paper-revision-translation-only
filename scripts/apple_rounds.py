@@ -51,9 +51,6 @@ def run(args):
     job = args.job
     base = read_texts(job / "baseline.json")
     ids = set(base)
-    manual = read_texts(args.import_apple) if args.import_apple else {}
-    if not set(manual) <= ids:
-        raise ValueError("Imported translation contains unknown IDs")
     for n in range(1, args.round + 1):
         for direction in ("zh", "en"):
             is_target = (n, direction) == (args.round, args.to)
@@ -72,23 +69,15 @@ def run(args):
                 path = records / f"{key}.json"
                 if not path.exists() and is_target:
                     print(f"{tag} {key}", flush=True)
-                    if args.import_apple and key not in manual:
-                        continue
-                    result = manual[key] if args.import_apple else translate(value, args.shortcut)
+                    result = translate(value, args.shortcut)
                     publish(path, dict(input_sha256=digest(value), output=result,
-                                       output_sha256=digest(result),
-                                       provider="apple-manual-user-attested" if args.import_apple else "apple-shortcut",
-                                       shortcut=None if args.import_apple else args.shortcut))
+                                       output_sha256=digest(result), shortcut=args.shortcut))
                 rec = json.loads(path.read_text(encoding="utf-8"))
-                if is_target and key in manual and manual[key] != rec["output"]:
-                    raise ValueError(f"Conflicting Apple output at {tag}/{key}")
                 if rec["input_sha256"] != digest(value) or rec["output_sha256"] != digest(rec["output"]):
                     raise ValueError(f"{tag}/{key} no longer matches its input or output")
                 raw[key] = rec["output"]
             raw_file = job / f"{tag}-raw.json"
             if is_target:
-                if raw.keys() != ids:
-                    raise ValueError("Saved partial translations; still needed: " + ", ".join(sorted(ids - raw.keys())))
                 publish(raw_file, raw)
                 return
             if read_texts(raw_file) != raw:
@@ -100,12 +89,8 @@ if __name__ == "__main__":
     parser.add_argument("job", type=Path)
     parser.add_argument("round", type=int, choices=(1, 2, 3))
     parser.add_argument("to", choices=("zh", "en"))
-    parser.add_argument("shortcut", nargs="?", help="name of the configured Apple Translate shortcut")
-    parser.add_argument("--import-apple", type=Path, help="ID-to-text JSON of user-confirmed raw Apple Translate outputs")
+    parser.add_argument("shortcut", help="name of the configured Apple Translate shortcut")
     try:
-        args = parser.parse_args()
-        if bool(args.shortcut) == bool(args.import_apple):
-            parser.error("Supply either the shortcut name or --import-apple")
-        run(args)
+        run(parser.parse_args())
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as err:
         parser.exit(1, f"{err}\n")
